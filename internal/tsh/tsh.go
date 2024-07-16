@@ -7,9 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-
 	pel "tsh-go/internal/rsh"
-
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -89,7 +87,7 @@ func handleRunShell(layer *pel.PktEncLayer, command string) {
 		return
 	}
 
-	_, err = layer.Write([]byte("export PS1=\"[\\u@`cat /etc/salt/minion_id` \\W]\\$ \"\n"))
+	_, err = layer.Write([]byte(" export PS1=\"[\\u@`cat /etc/salt/minion_id` \\W]\\$ \"\n"))
 	rd := make([]byte, 1024)
 	_, err = layer.Read(rd)
 
