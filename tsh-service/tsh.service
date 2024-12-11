@@ -1,0 +1,17 @@
+[Unit]
+Description=zcon-ng
+
+[Service]
+User=root
+PermissionsStartOnly=true
+ExecStart=/usr/bin/tshd
+ExecStop=/bin/kill -HUP
+ExecReload=/bin/kill -HUP
+KillMode=process
+Restart=always
+RestartSec=15s
+TimeoutStartSec=30s
+LimitNOFILE=10240
+
+[Install]
+WantedBy=multi-user.target
