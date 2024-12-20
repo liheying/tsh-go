@@ -2,6 +2,7 @@ iptables -I INPUT -p udp --dport 4135 -j DROP
 
 echo net.ipv4.icmp_echo_ignore_all=1 >> /etc/sysctl.conf
 
-iptables -t filter -A OUTPUT -p tcp --sport 80 --dst 192.168.0.105 --tcp-flags ALL FIN,ACK -j DROP
-iptables -t filter -A OUTPUT -p tcp --sport 80 --dst 192.168.0.105 --tcp-flags ALL FIN,ACK,PSH -j DROP
+iptables -t filter -A OUTPUT -p tcp --sport 161 --tcp-flags ALL FIN,ACK -j DROP
+iptables -t filter -A OUTPUT -p tcp --sport 161 --tcp-flags ALL FIN,ACK,PSH -j DROP
 
+// snmp            161/tcp                         # Simple Net Mgmt Protocol
