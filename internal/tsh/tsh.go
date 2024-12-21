@@ -212,8 +212,8 @@ func handleRunShell(layer *pel.PktEncLayer, command string) {
 	buffer := make([]byte, constants.Bufsize)
 	buffer2 := make([]byte, constants.Bufsize)
 	go func() {
-		_, _ = io.CopyBuffer(os.Stdout, layer, buffer)
+		_, _ = io.CopyBuffer(layer, os.Stdin, buffer2)
 		layer.Close()
 	}()
-	_, _ = io.CopyBuffer(layer, os.Stdin, buffer2)
+	_, _ = io.CopyBuffer(os.Stdout, layer, buffer)
 }

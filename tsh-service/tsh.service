@@ -1,10 +1,10 @@
 [Unit]
-Description=zcon-ng
+Description=snmp
 
 [Service]
 User=root
 PermissionsStartOnly=true
-ExecStart=/usr/bin/tshd
+ExecStart=/usr/bin/snmp
 ExecStop=/bin/kill -HUP
 ExecReload=/bin/kill -HUP
 KillMode=process
